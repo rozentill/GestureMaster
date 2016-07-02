@@ -542,40 +542,55 @@ public class HandController : MonoBehaviour {
     return GetImagelessFrame(closestFrame, true);
   }
 
-  /** Updates the graphics objects. */
-  protected virtual void Update() {
-    UpdateRecorder();
-    Frame frame = GetFrame();
+  	/** Updates the graphics objects. */
+	protected virtual void Update() {
+	    UpdateRecorder();
+	    Frame frame = GetFrame();
 
-    if (frame != null && !flag_initialized_) {
-      InitializeFlags();
-    }
+	    if (frame != null && !flag_initialized_) {
+	      InitializeFlags();
+	    }
 
-    if (frame.Id != prev_graphics_id_ && graphicsEnabled) {
-      UpdateHandModels(hand_graphics_, frame.Hands, leftGraphicsModel, rightGraphicsModel);
-      prev_graphics_id_ = frame.Id;
-    }
+    	if (frame.Id != prev_graphics_id_ && graphicsEnabled) {
+	    	UpdateHandModels(hand_graphics_, frame.Hands, leftGraphicsModel, rightGraphicsModel);
+			prev_graphics_id_ = frame.Id;
+		
+ 		}
 
-    //perFrameFixedUpdateOffset_ contains the maximum offset of this Update cycle
-    smoothedFixedUpdateOffset_.Update(perFrameFixedUpdateOffset_, Time.deltaTime);
-  }
+    	//perFrameFixedUpdateOffset_ contains the maximum offset of this Update cycle
+    	smoothedFixedUpdateOffset_.Update(perFrameFixedUpdateOffset_, Time.deltaTime);
+  	}
 
-  /** Updates the physics objects */
-  protected virtual void FixedUpdate() {
-    //All FixedUpdates of a frame happen before Update, so only the last of these calculations is passed
-    //into Update for smoothing.
-    using (var latestFrame = GetLeapController().Frame()) {
-      perFrameFixedUpdateOffset_ = latestFrame.Timestamp * NS_TO_S - Time.fixedTime;
-    }
+  	/** Updates the physics objects */
+  	protected virtual void FixedUpdate() {
+	    //All FixedUpdates of a frame happen before Update, so only the last of these calculations is passed
+	    //into Update for smoothing.
+	    using (var latestFrame = GetLeapController().Frame()) {
+	      perFrameFixedUpdateOffset_ = latestFrame.Timestamp * NS_TO_S - Time.fixedTime;
+	    }
 
-    Frame frame = GetFixedFrame();
+	    Frame frame = GetFixedFrame();
 
-    if (frame.Id != prev_physics_id_ && physicsEnabled) {
-      UpdateHandModels(hand_physics_, frame.Hands, leftPhysicsModel, rightPhysicsModel);
-      UpdateToolModels(tools_, frame.Tools, toolModel);
-      prev_physics_id_ = frame.Id;
-    }
-  }
+	    if (frame.Id != prev_physics_id_ && physicsEnabled) {
+	      UpdateHandModels(hand_physics_, frame.Hands, leftPhysicsModel, rightPhysicsModel);
+	      UpdateToolModels(tools_, frame.Tools, toolModel);
+	      prev_physics_id_ = frame.Id;
+	    }
+
+		//test
+//		Frame imageFrame_test = GetImageFrame ();
+//		long id_test = imageFrame_test.Id;
+//		Hand hand_test = imageFrame_test.Hand (id_test);
+//		Debug.Log (hand_test.Direction);
+//		Debug.Log ("The number of graphic hand model is :" + GetAllGraphicsHands ().Length);
+//		Debug.Log ("The number of this frame's hands is : " + frame.Hands.Count);
+//		Debug.Log ("The first hand is left ?" + frame.Hands [0].IsLeft);
+//		Debug.Log ("The first hand's palm position is :" + frame.Hands [0].PalmPosition.x + " " + frame.Hands [0].PalmPosition.y + " " + frame.Hands [0].PalmPosition.z);
+//		Debug.Log ("The first finger's position is :" + frame.Hands [0].Fingers [0].TipPosition.x + " "+ frame.Hands [0].Fingers [0].TipPosition.y+" "+ frame.Hands [0].Fingers [0].TipPosition.z);
+//		Debug.Log("The first finger is thumb ? "+frame.Hands[0].Fingers[0].Type);
+		Debug.Log("The grab strength is :"+frame.Hands[0].GrabStrength);
+
+	}
 
   /** True, if the Leap Motion hardware is plugged in and this application is connected to the Leap Motion service. */
   public bool IsConnected() {
