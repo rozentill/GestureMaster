@@ -175,6 +175,7 @@
 'Assets/LeapMotionVR/Widgets/Scripts/DataBinderExamples/SliderToTextDataBinder.cs'
 'Assets/LeapMotionVR/Widgets/Scripts/DataBinderExamples/ToggleToTextDataBinder.cs'
 'Assets/LeapMotionVR/Widgets/Scripts/WidgetsEnabler.cs'
-'Assets/sixdof.cs'
+'Assets/Main/handlook.cs'
+'Assets/Main/sixdof.cs'
 -r:'/Applications/Unity/Unity.app/Contents/Frameworks/Mono/lib/mono/unity/System.Runtime.Serialization.dll'
 -r:'/Applications/Unity/Unity.app/Contents/Frameworks/Mono/lib/mono/unity/System.Xml.Linq.dll'

@@ -9,7 +9,7 @@ public class sixDoF : MonoBehaviour {
 	private Vector3 moveDirection;
 	// Use this for initialization
 	void Start () {
-	
+
 	}
 	
 	// Update is called once per frame
@@ -20,14 +20,21 @@ public class sixDoF : MonoBehaviour {
 	void FixedUpdate(){
 		if (HandController.mode == 1) {
 			tipVelocity = HandController.curr_righthand.Fingers[1].TipVelocity;
-			moveDirection = new Vector3(tipVelocity.x,tipVelocity.y,-tipVelocity.z)*moveSpeed;
-			transform.Translate(moveDirection);
+			moveDirection = tipVelocity.ToUnity()*moveSpeed;
+//			moveDirection.x = tipVelocity.x*moveSpeed;
+//			moveDirection.y = tipVelocity.y*moveSpeed;
+//			moveDirection.z = -1*tipVelocity.z*moveSpeed;
+			transform.Translate(moveDirection,Space.Self);
+			Debug.Log("The tip velocity is :"+tipVelocity.x+" "+tipVelocity.y+" "+tipVelocity.z);
+			Debug.Log("The move Direction is :"+moveDirection.x+" "+ moveDirection.y+" "+moveDirection.z);
 		}
 
 		if (HandController.mode == 2) {
 			tipVelocity = HandController.curr_righthand.Fingers[1].TipVelocity;
-			moveDirection = new Vector3(tipVelocity.y,-tipVelocity.z,tipVelocity.x)*moveSpeed*40;
-			transform.Rotate(moveDirection);
+			moveDirection.x = tipVelocity.y*moveSpeed*30;
+			moveDirection.y = -1*tipVelocity.z*moveSpeed*30;
+			moveDirection.z = tipVelocity.x*moveSpeed*30;
+			transform.Rotate(moveDirection,Space.Self);
 		}
 
 	}

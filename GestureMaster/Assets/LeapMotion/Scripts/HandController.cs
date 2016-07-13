@@ -8,7 +8,6 @@ using UnityEngine;
 using System.Collections.Generic;
 using Leap;
 using System;
-
 /**
 * The Controller object that instantiates hands and tools to represent the hands and tools tracked
 * by the Leap Motion device.
@@ -170,6 +169,8 @@ public class HandController : MonoBehaviour {
 	public static Hand prev_righthand;
 	public static int mode = 0;//0-pause 1-translation 2-rotation
 
+	private LayerMask ui_layer;
+
   private bool flag_initialized_ = false;
 
   private int curr_frame_count = -1;
@@ -220,18 +221,28 @@ public class HandController : MonoBehaviour {
     _all.Add(this);
   }
 
-  /** Initalizes the hand and tool lists and recording, if enabled.*/
-  void Start() {
-    smoothedFixedUpdateOffset_.delay = FIXED_UPDATE_OFFSET_SMOOTHING_DELAY;
+  	/** Initalizes the hand and tool lists and recording, if enabled.*/
+  	void Start() {
+	    smoothedFixedUpdateOffset_.delay = FIXED_UPDATE_OFFSET_SMOOTHING_DELAY;
 
-    if (enableRecordPlayback && recordingAsset != null)
-      recorder_.Load(recordingAsset);
+	    if (enableRecordPlayback && recordingAsset != null)
+	      recorder_.Load(recordingAsset);
 
-    LifecycleEventHandler handler = onStart;
-    if (handler != null) {
-      handler(this);
-    }
-  }
+	    LifecycleEventHandler handler = onStart;
+	    if (handler != null) {
+	      handler(this);
+	    }
+
+		/*** yuan yao ***/
+		leap_controller_.EnableGesture(Gesture.GestureType.TYPE_KEY_TAP);
+		leap_controller_.Config.SetFloat ("Gesture.KeyTap.MinDownVelocity", 40.0f);
+		leap_controller_.Config.SetFloat ("Gesture.KeyTap.MinDistance", 1.0f);
+		leap_controller_.Config.Save ();
+
+		ui_layer = LayerMask.GetMask("UI");
+
+
+  	}
 
   /* Calling this sets this Hand Controller as the main Hand Controller.  If there was a previous main 
    * Hand Controller it is demoted and is no longer the main Hand Controller.
@@ -584,7 +595,26 @@ public class HandController : MonoBehaviour {
 	      prev_physics_id_ = frame.Id;
 	    }
 
-		/* yuan yao */
+		/*** yuan yao ***/
+
+		GestureList currGestureList = frame.Gestures();
+		foreach (Gesture gesture in currGestureList) {
+			Debug.Log("This gesture's type is :" + gesture.Type);
+
+			if(gesture.Type == Gesture.GestureType.TYPE_KEY_TAP){
+			
+				Ray tipRay = rightPhysicsModel.fingers[1].GetRay();
+				RaycastHit hit;
+				Debug.Log("The finger I test is :"+rightPhysicsModel.fingers[1].fingerType);
+				if(Physics.Raycast(tipRay,out hit,100f,ui_layer)){
+					Debug.Log("I tap the ball!");
+				}
+			}
+		}
+		Debug.Log ("The number of current gestures is :" + currGestureList.Count);
+
+
+
 		//Judge the left hand and its mode
 		int num_curr_hand = frame.Hands.Count;
 
