@@ -235,8 +235,9 @@ public class HandController : MonoBehaviour {
 
 		/*** yuan yao ***/
 		leap_controller_.EnableGesture(Gesture.GestureType.TYPE_KEY_TAP);
-		leap_controller_.Config.SetFloat ("Gesture.KeyTap.MinDownVelocity", 40.0f);
-		leap_controller_.Config.SetFloat ("Gesture.KeyTap.MinDistance", 1.0f);
+		leap_controller_.Config.SetFloat ("Gesture.KeyTap.MinDownVelocity", 15.0f);
+		leap_controller_.Config.SetFloat ("Gesture.KeyTap.HistorySeconds", .2f);
+		leap_controller_.Config.SetFloat ("Gesture.KeyTap.MinDistance", 0.2f);
 		leap_controller_.Config.Save ();
 
 		ui_layer = LayerMask.GetMask("UI");
@@ -597,22 +598,31 @@ public class HandController : MonoBehaviour {
 
 		/*** yuan yao ***/
 
+
+		/*** tap ***/
 		GestureList currGestureList = frame.Gestures();
 		foreach (Gesture gesture in currGestureList) {
 			Debug.Log("This gesture's type is :" + gesture.Type);
 
-			if(gesture.Type == Gesture.GestureType.TYPE_KEY_TAP){
-			
-				Ray tipRay = rightPhysicsModel.fingers[1].GetRay();
+			if(gesture.Type == Gesture.GestureType.TYPE_KEY_TAP){//use index finger
+//				print("The count of fingers in this gesture :"+ gesture.Pointables.Count);
+//				gesture.Pointables[0].TipPosition.ToUnity()
+				Vector3 right_finger_index_world = transform.TransformPoint(gesture.Pointables[0].TipPosition.ToUnityScaled());
+				Vector3 right_finger_index_screen = Camera.main.WorldToScreenPoint(right_finger_index_world);
+				right_finger_index_screen.z=0;
+
+				Ray ray = Camera.main.ScreenPointToRay(right_finger_index_screen);
+
+//				Debug.Log("Now the tip's position is "+right_finger_index_screen.x+" "+right_finger_index_screen.y+" "+right_finger_index_screen.z);
+
 				RaycastHit hit;
-				Debug.Log("The finger I test is :"+rightPhysicsModel.fingers[1].fingerType);
-				if(Physics.Raycast(tipRay,out hit,100f,ui_layer)){
+//				Debug.Log("The finger I test is :"+rightPhysicsModel.fingers[1].fingerType);
+				if(Physics.Raycast(ray,out hit,1000f,ui_layer)){
 					Debug.Log("I tap the ball!");
 				}
 			}
 		}
-		Debug.Log ("The number of current gestures is :" + currGestureList.Count);
-
+		/*** tap ***/
 
 
 		//Judge the left hand and its mode
