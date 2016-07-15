@@ -170,6 +170,11 @@ public class HandController : MonoBehaviour {
 	public static int mode = 0;//0-pause 1-translation 2-rotation
 
 	private LayerMask ui_layer;
+	private Vector3 keyTap_tipPosition_world;
+	private Vector3 keyTap_tipPosition_screen;
+	private Vector3 swipe_direction_world;
+	private	Ray ray;
+	private RaycastHit hit;
 
   private bool flag_initialized_ = false;
 
@@ -234,10 +239,22 @@ public class HandController : MonoBehaviour {
 	    }
 
 		/*** yuan yao ***/
-		leap_controller_.EnableGesture(Gesture.GestureType.TYPE_KEY_TAP);
-		leap_controller_.Config.SetFloat ("Gesture.KeyTap.MinDownVelocity", 15.0f);
+		//Enable gestures: key_tap and swipe
+		leap_controller_.EnableGesture (Gesture.GestureType.TYPE_KEY_TAP);
+		leap_controller_.EnableGesture (Gesture.GestureType.TYPE_SWIPE);
+		leap_controller_.EnableGesture (Gesture.GestureType.TYPE_CIRCLE);
+
+		//Config
+		leap_controller_.Config.SetFloat ("Gesture.KeyTap.MinDownVelocity", 20.0f);
 		leap_controller_.Config.SetFloat ("Gesture.KeyTap.HistorySeconds", .2f);
 		leap_controller_.Config.SetFloat ("Gesture.KeyTap.MinDistance", 0.2f);
+
+		leap_controller_.Config.SetFloat ("Gesture.Swipe.MinLength", 200.0f);
+		leap_controller_.Config.SetFloat ("Gesture.Swipe.MinVelocity", 750f);
+
+		leap_controller_.Config.SetFloat ("Gesture.Circle.MinRadius", 20.0f);
+		leap_controller_.Config.SetFloat ("Gesture.Circle.MinArc", 2.0f);
+
 		leap_controller_.Config.Save ();
 
 		ui_layer = LayerMask.GetMask("UI");
@@ -599,31 +616,59 @@ public class HandController : MonoBehaviour {
 		/*** yuan yao ***/
 
 
-		/*** tap ***/
+
 		GestureList currGestureList = frame.Gestures();
+		Debug.Log("Found "+currGestureList.Count+" gestures !");
+
 		foreach (Gesture gesture in currGestureList) {
 			Debug.Log("This gesture's type is :" + gesture.Type);
 
+			/*** tap ***/
 			if(gesture.Type == Gesture.GestureType.TYPE_KEY_TAP){//use index finger
 //				print("The count of fingers in this gesture :"+ gesture.Pointables.Count);
 //				gesture.Pointables[0].TipPosition.ToUnity()
-				Vector3 right_finger_index_world = transform.TransformPoint(gesture.Pointables[0].TipPosition.ToUnityScaled());
-				Vector3 right_finger_index_screen = Camera.main.WorldToScreenPoint(right_finger_index_world);
-				right_finger_index_screen.z=0;
+				keyTap_tipPosition_world = transform.TransformPoint(gesture.Pointables[0].TipPosition.ToUnityScaled());
+				keyTap_tipPosition_screen = Camera.main.WorldToScreenPoint(keyTap_tipPosition_world);
+				keyTap_tipPosition_screen.z=0;
 
-				Ray ray = Camera.main.ScreenPointToRay(right_finger_index_screen);
+				ray = Camera.main.ScreenPointToRay(keyTap_tipPosition_screen);
 
-//				Debug.Log("Now the tip's position is "+right_finger_index_screen.x+" "+right_finger_index_screen.y+" "+right_finger_index_screen.z);
-
-				RaycastHit hit;
-//				Debug.Log("The finger I test is :"+rightPhysicsModel.fingers[1].fingerType);
 				if(Physics.Raycast(ray,out hit,1000f,ui_layer)){
 					Debug.Log("I tap the ball!");
 				}
+			
 			}
-		}
-		/*** tap ***/
+			/*** tap ***/
 
+			/*** swipe ***/
+			if(gesture.Type == Gesture.GestureType.TYPESWIPE){
+
+				Debug.Log("Got the swipe gesture !");
+
+				SwipeGesture swipeGesture = new SwipeGesture(gesture);
+				swipe_direction_world = transform.TransformDirection(swipeGesture.Direction.ToUnity());
+
+				Debug.Log("The direction of swipe is "+swipe_direction_world.x+" "+swipe_direction_world.y+" "+swipe_direction_world.z);
+			}
+			/*** swipe ***/
+
+			/*** circle ***/
+			if(gesture.Type == Gesture.GestureType.TYPECIRCLE){
+				Debug.Log("Got the circle gesture !");
+
+				CircleGesture circleGesture = new CircleGesture(gesture);
+				String clockwiseness;;
+				if (circleGesture.Pointable.Direction.AngleTo (circleGesture.Normal) <= Math.PI / 2) {
+					clockwiseness = "clockwise";
+				} else {
+					clockwiseness = "counterclockwise";
+				}
+
+				Debug.Log("This circle gesture is :"+clockwiseness);
+			}
+			/*** circle ***/
+
+		}
 
 		//Judge the left hand and its mode
 		int num_curr_hand = frame.Hands.Count;
