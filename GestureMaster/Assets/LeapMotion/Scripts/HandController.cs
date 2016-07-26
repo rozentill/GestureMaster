@@ -184,7 +184,7 @@ public class HandController : MonoBehaviour {
 	private Vector[] left_palm_position_array;
 	private Vector[] right_palm_position_array;
 	private int num_in_array = 0;
-
+	
 	private Vector tmp_left = new Vector(0,0,0);
 	private Vector tmp_right = new Vector(0,0,0);
 	private Vector3 avg_left_palm_position;
@@ -195,10 +195,15 @@ public class HandController : MonoBehaviour {
 	private Vector3 prev_right_palm_position ;
 	private Vector3 curr_right_palm_position ;
 
+	private Vector3 zero_vector = new Vector3 (0, 0, 0);
 	//gesture
-	private int rotate_y_state = 0; //0-stop 1-start&keep 2-success
-	private int rotate_x_state = 0;
-	private int connect_state = 0;
+	private int curr_rotate_y_state = 0; //0-stop 1-start&keep 2-success
+	private int curr_rotate_x_state = 0;
+	private int curr_connect_state = 0;
+	private int prev_rotate_y_state = 0; //0-stop 1-start&keep 2-success
+	private int prev_rotate_x_state = 0;
+	private int prev_connect_state = 0;
+
 
 	private Vector3 left_direction;
 	private Vector3 right_direction;
@@ -207,9 +212,34 @@ public class HandController : MonoBehaviour {
 	private Vector3 x_axis = new Vector3 (1, 0, 0);
 	private Vector3 y_axis = new Vector3 (0, 1, 0);
 
-
-
+	private float rotate_angle = 0f;
+	
 	private float gesture_duration = 0;
+
+	float angle_v2(Vector3 v, int plane=0){//0-x,1-y,2-z
+		if (plane == 0) {//z-y
+			if (v.y >= 0) {
+				return Vector2.Angle (new Vector2 (1, 0), new Vector2 (v.z, v.y));
+			} else {
+				return 360 - Vector2.Angle (new Vector2 (1, 0), new Vector2 (v.z, v.y));
+			}
+		} else if (plane == 1) {//x-z axis
+			if (v.z >= 0) {
+				return Vector2.Angle (new Vector2 (1, 0), new Vector2 (v.x, v.z));
+			} else {
+				return 360 - Vector2.Angle (new Vector2 (1, 0), new Vector2 (v.x, v.z));
+			}
+		} else if (plane == 2) {//x-y
+			if (v.y >= 0) {
+				return Vector2.Angle (new Vector2 (1, 0), new Vector2 (v.x, v.y));
+			} else {
+				return 360 - Vector2.Angle (new Vector2 (1, 0), new Vector2 (v.x, v.y));
+			}
+		} else {
+			return 0;
+		}
+
+	}
 
 	/************************/
 
@@ -719,84 +749,123 @@ public class HandController : MonoBehaviour {
 
 		if (flag_two_hand) {
 
-			Debug.Log("Now two hands.");
-		
-			if(frame.Hands[0].IsLeft){
-				left_palm_position_array[num_in_array] = frame.Hands[0].PalmPosition;
-				right_palm_position_array[num_in_array] = frame.Hands[1].PalmPosition;
-			}
-			else{
-				left_palm_position_array[num_in_array] = frame.Hands[1].PalmPosition;
-				right_palm_position_array[num_in_array] = frame.Hands[0].PalmPosition;
+			Debug.Log ("Now two hands.");
+
+			if (frame.Hands [0].IsLeft) {
+				left_palm_position_array [num_in_array] = frame.Hands [0].PalmPosition;
+				right_palm_position_array [num_in_array] = frame.Hands [1].PalmPosition;
+			} else {
+				left_palm_position_array [num_in_array] = frame.Hands [1].PalmPosition;
+				right_palm_position_array [num_in_array] = frame.Hands [0].PalmPosition;
 			}
 
 			num_in_array++;
 
-			if(num_in_array == 5){
-				Debug.Log("A new position loading ...");
+			if (num_in_array == 5) {
+				Debug.Log ("A new position loading ...");
 				// average of 5 recent frames stored in the arrays
 
-				for(int index=0;index<5;index++){
-					tmp_left += left_palm_position_array[index];
-					tmp_right += right_palm_position_array[index];
+				for (int index=0; index<5; index++) {
+					tmp_left += left_palm_position_array [index];
+					tmp_right += right_palm_position_array [index];
 				}
+
 				tmp_left /= 5f;
 				tmp_right /= 5f;
 				num_in_array = 0;
-			}
 
-			avg_left_palm_position = tmp_left.ToUnityScaled();
-			avg_right_palm_position = tmp_right.ToUnityScaled();
 
-			curr_left_palm_position = handController.transform.TransformPoint(avg_left_palm_position);
-			curr_right_palm_position = handController.transform.TransformPoint(avg_right_palm_position);
+				avg_left_palm_position = tmp_left.ToUnityScaled ();
+				avg_right_palm_position = tmp_right.ToUnityScaled ();
+				
+				curr_left_palm_position = handController.transform.TransformPoint (avg_left_palm_position);
+				curr_right_palm_position = handController.transform.TransformPoint (avg_right_palm_position);
+			
+				try {
+					stick_direction = prev_right_palm_position - prev_left_palm_position;
+					left_direction = curr_left_palm_position - prev_left_palm_position;
+					right_direction = curr_right_palm_position - prev_right_palm_position;
+					
+					if (
+						(
+						Math.Abs (stick_direction.y) < Math.Abs (stick_direction.x) || Math.Abs (stick_direction.y) < Math.Abs (stick_direction.z)
+						) && (
+						Math.Abs (left_direction.y) < Math.Abs (left_direction.x) || Math.Abs (left_direction.y) < Math.Abs (left_direction.z)
+						) && (
+						Math.Abs (right_direction.y) < Math.Abs (right_direction.x) || Math.Abs (right_direction.y) < Math.Abs (right_direction.z)
+						)
+						) {//hands moving in x-z plane
+						Debug.Log ("Now moving in the x-z plane.");
+						
+						if (angle_v2 (right_direction + stick_direction, 1) > angle_v2 (stick_direction) && angle_v2 (zero_vector - stick_direction + left_direction) > angle_v2 (zero_vector - stick_direction)) {
+							curr_rotate_y_state = 1;
+						}
 
-			stick_direction = curr_right_palm_position - curr_left_palm_position;
+						
+					} else if (
+						(
+						Math.Abs (stick_direction.x) < Math.Abs (stick_direction.y) || Math.Abs (stick_direction.x) < Math.Abs (stick_direction.z)
+						) && (
+						Math.Abs (left_direction.x) < Math.Abs (left_direction.y) || Math.Abs (left_direction.x) < Math.Abs (left_direction.z)
+						) && (
+						Math.Abs (right_direction.x) < Math.Abs (right_direction.y) || Math.Abs (right_direction.x) < Math.Abs (right_direction.z)
+						)
+						) {
+						Debug.Log ("Now moving in the y-z plane.");
+					}
 
-//			Debug.Log("The angle is : "+Vector3.Angle(stick_direction,new Vector3(1,0,0)));
 
-			try{
-				left_direction = curr_left_palm_position - prev_left_palm_position;
-				right_direction = curr_right_palm_position - prev_right_palm_position;
+					//gesture is working or not
+					if(curr_rotate_x_state==1||curr_rotate_y_state==1){
+						gesture_duration += 0.02f;
+						rotate_angle += angle_v2(curr_right_palm_position-curr_left_palm_position)-angle_v2(stick_direction);
+					}
+					else if(curr_connect_state == 1){
+						gesture_duration += 0.02f;
+						rotate_angle = 0f;
+					}
+					else{
+						gesture_duration = 0f;
+						rotate_angle = 0f;
+					}
 
-				if(
-					(
-					Math.Abs(stick_direction.y)<Math.Abs(stick_direction.x)||Math.Abs(stick_direction.y)<Math.Abs(stick_direction.z)
-					)&&(
-					Math.Abs(left_direction.y)<Math.Abs(left_direction.x)||Math.Abs(left_direction.y)<Math.Abs(left_direction.z)
-					)&&(
-					Math.Abs(right_direction.y)<Math.Abs(right_direction.x)||Math.Abs(right_direction.y)<Math.Abs(right_direction.z)
-					)
-				){//hands moving in x-z plane
-					Debug.Log("Now moving in the x-z plane.");
+					if(gesture_duration>=2.5){
+						rotate_angle = 0f;
+						gesture_duration = 0f;
+					}
+					else if(rotate_angle>=45){//success
+						Debug.Log("A rotation gesture found !!!!!");
+						rotate_angle = 0f;
+						gesture_duration = 0f;
+					}
+					
+					prev_rotate_x_state = curr_rotate_x_state;
+					prev_rotate_y_state = curr_rotate_y_state;
+					prev_connect_state = curr_connect_state;
+					curr_rotate_x_state = 0;
+					curr_rotate_y_state = 0;
+					curr_connect_state = 0;
 
-//					if(Vector3.Angle(left)){
-//
-//					}
-
+				} catch (Exception e) {
+					
+				} finally {
+					prev_left_palm_position = curr_left_palm_position;
+					prev_right_palm_position = curr_right_palm_position;
 				}
-				else if(
-					(
-					Math.Abs(stick_direction.x)<Math.Abs(stick_direction.y)||Math.Abs(stick_direction.x)<Math.Abs(stick_direction.z)
-					)&&(
-					Math.Abs(left_direction.x)<Math.Abs(left_direction.y)||Math.Abs(left_direction.x)<Math.Abs(left_direction.z)
-					)&&(
-					Math.Abs(right_direction.x)<Math.Abs(right_direction.y)||Math.Abs(right_direction.x)<Math.Abs(right_direction.z)
-					)
-					){
-					Debug.Log("Now moving in the y-z plane.");
-				}
-			}
-			catch(Exception e){
-
-			}
-			finally{
-				prev_left_palm_position = curr_left_palm_position;
-				prev_right_palm_position = curr_right_palm_position;
-			}
 
 
-		
+			
+			}
+
+		} else {//not two hands
+			prev_connect_state = 0;
+			prev_rotate_x_state = 0;
+			prev_rotate_y_state = 0;
+			curr_connect_state = 0;
+			curr_rotate_x_state = 0;
+			curr_rotate_y_state = 0;
+			gesture_duration = 0;
+			num_in_array = 0;
 		}
 
 
