@@ -163,6 +163,8 @@ public class HandController : MonoBehaviour {
   }
 
 	/* yuan yao */
+	private GameObject handController;
+
 	public static Hand curr_lefthand;
 	public static Hand curr_righthand;
 	public static Hand prev_lefthand;
@@ -175,6 +177,41 @@ public class HandController : MonoBehaviour {
 	private Vector3 swipe_direction_world;
 	private	Ray ray;
 	private RaycastHit hit;
+
+	// two hands gesture
+	private bool flag_two_hand = false;
+
+	private Vector[] left_palm_position_array;
+	private Vector[] right_palm_position_array;
+	private int num_in_array = 0;
+
+	private Vector tmp_left = new Vector(0,0,0);
+	private Vector tmp_right = new Vector(0,0,0);
+	private Vector3 avg_left_palm_position;
+	private Vector3 avg_right_palm_position;
+
+	private Vector3 prev_left_palm_position ;
+	private Vector3 curr_left_palm_position ;
+	private Vector3 prev_right_palm_position ;
+	private Vector3 curr_right_palm_position ;
+
+	//gesture
+	private int rotate_y_state = 0; //0-stop 1-start&keep 2-success
+	private int rotate_x_state = 0;
+	private int connect_state = 0;
+
+	private Vector3 left_direction;
+	private Vector3 right_direction;
+	private Vector3 stick_direction;
+
+	private Vector3 x_axis = new Vector3 (1, 0, 0);
+	private Vector3 y_axis = new Vector3 (0, 1, 0);
+
+
+
+	private float gesture_duration = 0;
+
+	/************************/
 
   private bool flag_initialized_ = false;
 
@@ -258,6 +295,11 @@ public class HandController : MonoBehaviour {
 		leap_controller_.Config.Save ();
 
 		ui_layer = LayerMask.GetMask("UI");
+
+		handController = GameObject.Find("HandController");
+
+		left_palm_position_array = new Vector[5];
+		right_palm_position_array = new Vector[5];
 
 
   	}
@@ -616,9 +658,9 @@ public class HandController : MonoBehaviour {
 		/*** yuan yao ***/
 
 
-
+		//
 		GestureList currGestureList = frame.Gestures();
-		Debug.Log("Found "+currGestureList.Count+" gestures !");
+//		Debug.Log("Found "+currGestureList.Count+" gestures !");
 
 		foreach (Gesture gesture in currGestureList) {
 			Debug.Log("This gesture's type is :" + gesture.Type);
@@ -670,72 +712,142 @@ public class HandController : MonoBehaviour {
 
 		}
 
-		//Judge the left hand and its mode
-		int num_curr_hand = frame.Hands.Count;
+		//two hands
+		if (frame.Hands.Count == 2) {
+			flag_two_hand = true;
+		}
 
-		//set curr left hand and right hand
-		if (num_curr_hand != 0) {
-			// one hand and is left
-			if(num_curr_hand==1){
-				if(frame.Hands[0].IsLeft){
-					curr_lefthand = frame.Hands[0];
-					curr_righthand = null;
+		if (flag_two_hand) {
+
+			Debug.Log("Now two hands.");
+		
+			if(frame.Hands[0].IsLeft){
+				left_palm_position_array[num_in_array] = frame.Hands[0].PalmPosition;
+				right_palm_position_array[num_in_array] = frame.Hands[1].PalmPosition;
+			}
+			else{
+				left_palm_position_array[num_in_array] = frame.Hands[1].PalmPosition;
+				right_palm_position_array[num_in_array] = frame.Hands[0].PalmPosition;
+			}
+
+			num_in_array++;
+
+			if(num_in_array == 5){
+				Debug.Log("A new position loading ...");
+				// average of 5 recent frames stored in the arrays
+
+				for(int index=0;index<5;index++){
+					tmp_left += left_palm_position_array[index];
+					tmp_right += right_palm_position_array[index];
 				}
-				else{
-					curr_righthand = frame.Hands[0];
-					curr_lefthand = null;
+				tmp_left /= 5f;
+				tmp_right /= 5f;
+				num_in_array = 0;
+			}
+
+			avg_left_palm_position = tmp_left.ToUnityScaled();
+			avg_right_palm_position = tmp_right.ToUnityScaled();
+
+			curr_left_palm_position = handController.transform.TransformPoint(avg_left_palm_position);
+			curr_right_palm_position = handController.transform.TransformPoint(avg_right_palm_position);
+
+			stick_direction = curr_right_palm_position - curr_left_palm_position;
+
+//			Debug.Log("The angle is : "+Vector3.Angle(stick_direction,new Vector3(1,0,0)));
+
+			try{
+				left_direction = curr_left_palm_position - prev_left_palm_position;
+				right_direction = curr_right_palm_position - prev_right_palm_position;
+
+				if(
+					(
+					Math.Abs(stick_direction.y)<Math.Abs(stick_direction.x)||Math.Abs(stick_direction.y)<Math.Abs(stick_direction.z)
+					)&&(
+					Math.Abs(left_direction.y)<Math.Abs(left_direction.x)||Math.Abs(left_direction.y)<Math.Abs(left_direction.z)
+					)&&(
+					Math.Abs(right_direction.y)<Math.Abs(right_direction.x)||Math.Abs(right_direction.y)<Math.Abs(right_direction.z)
+					)
+				){//hands moving in x-z plane
+					Debug.Log("Now moving in the x-z plane.");
+
+//					if(Vector3.Angle(left)){
+//
+//					}
+
 				}
+				else if(
+					(
+					Math.Abs(stick_direction.x)<Math.Abs(stick_direction.y)||Math.Abs(stick_direction.x)<Math.Abs(stick_direction.z)
+					)&&(
+					Math.Abs(left_direction.x)<Math.Abs(left_direction.y)||Math.Abs(left_direction.x)<Math.Abs(left_direction.z)
+					)&&(
+					Math.Abs(right_direction.x)<Math.Abs(right_direction.y)||Math.Abs(right_direction.x)<Math.Abs(right_direction.z)
+					)
+					){
+					Debug.Log("Now moving in the y-z plane.");
+				}
+			}
+			catch(Exception e){
 
 			}
-			//two hands
-			if(num_curr_hand==2){
-				if(frame.Hands[0].IsLeft){
-					curr_lefthand = frame.Hands[0];
-					curr_righthand = frame.Hands[1];
-				}
-				else{
-					curr_righthand = frame.Hands[0];
-					curr_lefthand = frame.Hands[1];
-				}
-				
+			finally{
+				prev_left_palm_position = curr_left_palm_position;
+				prev_right_palm_position = curr_right_palm_position;
 			}
-		}
 
-		//mode: rotation or translation
-		if (curr_lefthand!=null && curr_lefthand.GrabStrength >= 0.8 && num_curr_hand==2) {
-			Debug.Log ("Now it is rotation mode!");
-			mode = 2;
-		} else if (curr_lefthand!=null && curr_lefthand.GrabStrength < 0.8 && num_curr_hand==2) {
-			Debug.Log ("Now it is translation mode !");
-			mode = 1;
-		} else {
-			Debug.Log("Now it is pause mode .");
-			mode = 0;
-		}
 
-		if (mode == 2) {
-//			Debug.Log("The "+curr_righthand.Fingers[0].Type+"figer's position is :"+curr_righthand.Fingers[0].TipPosition.x+" "+curr_righthand.Fingers[0].TipPosition.y +" "+curr_righthand.Fingers[0].TipPosition.z);
-//			Debug.Log("The "+curr_righthand.Fingers[1].Type+"figer's position is :"+curr_righthand.Fingers[1].TipPosition.x+" "+curr_righthand.Fingers[1].TipPosition.y +" "+curr_righthand.Fingers[1].TipPosition.z);
-//			Debug.Log("The "+curr_righthand.Fingers[2].Type+"figer's position is :"+curr_righthand.Fingers[2].TipPosition.x+" "+curr_righthand.Fingers[2].TipPosition.y +" "+curr_righthand.Fingers[2].TipPosition.z);
-//			Debug.Log("The "+curr_righthand.Fingers[3].Type+"figer's position is :"+curr_righthand.Fingers[3].TipPosition.x+" "+curr_righthand.Fingers[3].TipPosition.y +" "+curr_righthand.Fingers[3].TipPosition.z);
-//			Debug.Log("The "+curr_righthand.Fingers[4].Type+"figer's position is :"+curr_righthand.Fingers[4].TipPosition.x+" "+curr_righthand.Fingers[4].TipPosition.y +" "+curr_righthand.Fingers[4].TipPosition.z);
-			Debug.Log("The index finger's velocity is :"+curr_righthand.Fingers[1].TipVelocity);
+		
 		}
 
 
 
-		//test
-//		Frame imageFrame_test = GetImageFrame ();
-//		long id_test = imageFrame_test.Id;
-//		Hand hand_test = imageFrame_test.Hand (id_test);
-//		Debug.Log (hand_test.Direction);
-//		Debug.Log ("The number of graphic hand model is :" + GetAllGraphicsHands ().Length);
-//		Debug.Log ("The number of this frame's hands is : " + frame.Hands.Count);
-//		Debug.Log ("The first hand is left ?" + frame.Hands [0].IsLeft);
-//		Debug.Log ("The first hand's palm position is :" + frame.Hands [0].PalmPosition.x + " " + frame.Hands [0].PalmPosition.y + " " + frame.Hands [0].PalmPosition.z);
-//		Debug.Log ("The first finger's position is :" + frame.Hands [0].Fingers [0].TipPosition.x + " "+ frame.Hands [0].Fingers [0].TipPosition.y+" "+ frame.Hands [0].Fingers [0].TipPosition.z);
-//		Debug.Log("The first finger is thumb ? "+frame.Hands[0].Fingers[0].Type);
-//		Debug.Log("The grab strength is :"+frame.Handsf[0].GrabStrength);
+
+//		int num_curr_hand = frame.Hands.Count;
+//
+//		//set curr left hand and right hand
+//		if (num_curr_hand != 0) {
+//			// one hand and is left
+//			if(num_curr_hand==1){
+//				if(frame.Hands[0].IsLeft){
+//					curr_lefthand = frame.Hands[0];
+//					curr_righthand = null;
+//				}
+//				else{
+//					curr_righthand = frame.Hands[0];
+//					curr_lefthand = null;
+//				}
+//
+//			}
+//			//two hands
+//			if(num_curr_hand==2){
+//				if(frame.Hands[0].IsLeft){
+//					curr_lefthand = frame.Hands[0];
+//					curr_righthand = frame.Hands[1];
+//				}
+//				else{
+//					curr_righthand = frame.Hands[0];
+//					curr_lefthand = frame.Hands[1];
+//				}
+//				
+//			}
+//		}
+//
+//		//mode: rotation or translation
+//		if (curr_lefthand!=null && curr_lefthand.GrabStrength >= 0.8 && num_curr_hand==2) {
+//			Debug.Log ("Now it is rotation mode!");
+//			mode = 2;
+//		} else if (curr_lefthand!=null && curr_lefthand.GrabStrength < 0.8 && num_curr_hand==2) {
+//			Debug.Log ("Now it is translation mode !");
+//			mode = 1;
+//		} else {
+//
+//			mode = 0;
+//		}
+//
+//		if (mode == 2) {
+//			Debug.Log("The index finger's velocity is :"+curr_righthand.Fingers[1].TipVelocity);
+//		}
+
 
 	}
 
