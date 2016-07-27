@@ -213,8 +213,9 @@ public class HandController : MonoBehaviour {
 	private Vector3 y_axis = new Vector3 (0, 1, 0);
 
 	private float rotate_angle = 0f;
-	
-	private float gesture_duration = 0;
+	private float gesture_duration = 0f;
+
+	private bool rotate_clockwise = true;
 
 	float angle_v2(Vector3 v, int plane=0){//0-x,1-y,2-z
 		if (plane == 0) {//z-y
@@ -796,9 +797,17 @@ public class HandController : MonoBehaviour {
 						)
 						) {//hands moving in x-z plane
 						Debug.Log ("Now moving in the x-z plane.");
-						
-						if (angle_v2 (right_direction + stick_direction, 1) > angle_v2 (stick_direction) && angle_v2 (zero_vector - stick_direction + left_direction) > angle_v2 (zero_vector - stick_direction)) {
+
+						//rotation x-z counterclockwise
+						if (angle_v2 (right_direction + stick_direction, 1) > angle_v2 (stick_direction,1) && angle_v2 (zero_vector - stick_direction + left_direction,1) > angle_v2 (zero_vector - stick_direction,1)) {
 							curr_rotate_y_state = 1;
+							rotate_clockwise = false;
+						}else if (angle_v2 (right_direction + stick_direction, 1) < angle_v2 (stick_direction,1) && angle_v2 (zero_vector - stick_direction + left_direction,1) < angle_v2 (zero_vector - stick_direction,1)) {
+							curr_rotate_y_state = 2;//clockwise
+							rotate_clockwise = true;
+						}//connect
+						else if((345<angle_v2(left_direction)||angle_v2(left_direction)<15)&&(angle_v2(right_direction)>165&&angle_v2(right_direction)<195)){
+							curr_connect_state = 1;
 						}
 
 						
@@ -816,12 +825,21 @@ public class HandController : MonoBehaviour {
 
 
 					//gesture is working or not
-					if(curr_rotate_x_state==1||curr_rotate_y_state==1){
-						gesture_duration += 0.02f;
-						rotate_angle += angle_v2(curr_right_palm_position-curr_left_palm_position)-angle_v2(stick_direction);
+					if(curr_rotate_y_state==1||curr_rotate_y_state==2){
+						if(prev_rotate_y_state == 0){
+							gesture_duration = 0.02f;
+						}else if(prev_rotate_y_state == curr_rotate_y_state){
+							gesture_duration += 0.02f;
+						}
+						rotate_angle += angle_v2(curr_right_palm_position-curr_left_palm_position,1)-angle_v2(stick_direction,1);
 					}
 					else if(curr_connect_state == 1){
-						gesture_duration += 0.02f;
+						if(prev_connect_state == 0){
+							gesture_duration = 0.02f;
+						}else{
+							gesture_duration += 0.02f;
+						}
+
 						rotate_angle = 0f;
 					}
 					else{
@@ -829,13 +847,22 @@ public class HandController : MonoBehaviour {
 						rotate_angle = 0f;
 					}
 
+					//check if success
+					//rotation y and connect
 					if(gesture_duration>=2.5){
 						rotate_angle = 0f;
 						gesture_duration = 0f;
 					}
-					else if(rotate_angle>=45){//success
-						Debug.Log("A rotation gesture found !!!!!");
+					else if(rotate_angle>=35){//success
+						if(rotate_clockwise){
+							Debug.Log("A clockwise rotation gesture found !!!!!");
+						}else{
+							Debug.Log("A counterclockwise rotation gesture found !!!!!");
+						}
 						rotate_angle = 0f;
+						gesture_duration = 0f;
+					}else if(Vector3.Distance(curr_right_palm_position,curr_left_palm_position)<1){//success
+						Debug.Log("A connect gesture found!!!");
 						gesture_duration = 0f;
 					}
 					
